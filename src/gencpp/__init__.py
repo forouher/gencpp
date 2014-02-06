@@ -50,7 +50,7 @@ MSG_TYPE_TO_CPP = {'byte': 'int8_t',
                     'int64': 'int64_t',
                    'float32': 'float',
                    'float64': 'double',
-                   'string': 'std::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other > ',
+                   'string': 'ros::messages::types::basic_string<char, std::char_traits<char>, typename ContainerAllocator::template rebind<char>::other > ',
                    'time': 'ros::Time',
                    'duration': 'ros::Duration'}
 
@@ -81,7 +81,7 @@ def msg_type_to_cpp(type):
 
     if (is_array):
         if (array_len is None):
-            return 'std::vector<%s, typename ContainerAllocator::template rebind<%s>::other > '%(cpp_type, cpp_type)
+            return 'ros::messages::types::vector<%s, boost::container::scoped_allocator_adaptor<typename ContainerAllocator::template rebind< %s >::other> > '%(cpp_type, cpp_type)
         else:
             return 'boost::array<%s, %s> '%(cpp_type, array_len)
     else:
@@ -192,7 +192,7 @@ def escape_string(str):
     return str
 
 #used
-def generate_fixed_length_assigns(spec, container_gets_allocator, cpp_name_prefix):
+def generate_fixed_length_assigns(spec, container_gets_allocator, cpp_name_prefix, use_copy):
     """
     Initialize any fixed-length arrays
 
@@ -212,7 +212,10 @@ def generate_fixed_length_assigns(spec, container_gets_allocator, cpp_name_prefi
             continue
 
         val = default_value(field.base_type)
-        if (container_gets_allocator and takes_allocator(field.base_type)):
+	if use_copy and container_gets_allocator:
+            yield '    %s = o.%s;\n'%(field.name, field.name)
+	    #val = 'o.'+field.name
+        elif (container_gets_allocator and takes_allocator(field.base_type)):
             # String is a special case, as it is the only builtin type that takes an allocator
             if (field.base_type == "string"):
                 string_cpp = msg_type_to_cpp("string")
@@ -224,7 +227,7 @@ def generate_fixed_length_assigns(spec, container_gets_allocator, cpp_name_prefi
             yield '    %s.assign(%s);\n'%(field.name, val)
 
 #used
-def generate_initializer_list(spec, container_gets_allocator):
+def generate_initializer_list(spec, container_gets_allocator, use_copy):
     """
     Writes the initializer list for a constructor
 
@@ -241,14 +244,20 @@ def generate_initializer_list(spec, container_gets_allocator):
     for field in spec.parsed_fields():
         val = default_value(field.base_type)
         use_alloc = takes_allocator(field.base_type)
+
+	copy = ''
+	if use_copy:
+	    copy = 'o.'+field.name+','
+	if use_copy and container_gets_allocator:
+	    val = 'o.'+field.name
         if (field.is_array):
             if (field.array_len is None and container_gets_allocator):
-                yield '  %s %s(_alloc)'%(op, field.name)
+                yield '  %s %s(%s _alloc)'%(op, field.name, copy)
             else:
                 yield '  %s %s()'%(op, field.name)
         else:
             if (container_gets_allocator and use_alloc):
-                yield '  %s %s(_alloc)'%(op, field.name)
+                yield '  %s %s(%s _alloc)'%(op, field.name, copy)
             else:
                 yield '  %s %s(%s)'%(op, field.name, val)
         op = ','
