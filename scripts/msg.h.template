@@ -66,14 +66,15 @@ cpp_msg_definition = gencpp.escape_message_definition(msg_definition)
 @# Generic Includes
 @##############################
 
-#include <string>
-#include <vector>
 #include <map>
 
+#include <ros/boost_container.h>
 #include <ros/types.h>
 #include <ros/serialization.h>
 #include <ros/builtin_message_traits.h>
 #include <ros/message_operations.h>
+#include <ros/allocator.h>
+#include <boost/container/scoped_allocator.hpp>
 
 @##############################
 @# Includes for dependencies
@@ -89,21 +90,29 @@ for field in spec.parsed_fields():
       print '#include <%s/%s.h>'%(package, name)
 }@
 
+namespace ros {
+class MemfdMessage;
+}
+
 namespace @(spec.package)
 {
 template <class ContainerAllocator>
 struct @(spec.short_name)_
 {
   typedef @(spec.short_name)_<ContainerAllocator> Type;
+  typedef ContainerAllocator allocator_type;
+  typedef boost::container::scoped_allocator_adaptor<typename ContainerAllocator::template rebind<void>::other> allocator;
+
+  boost::shared_ptr<ros::MemfdMessage> mem_;
 
 @# constructors (with and without allocator)
-@[for (alloc_type,alloc_name) in [['',''],['const ContainerAllocator& ','_alloc']]]@
-  @(spec.short_name)_(@(alloc_type+alloc_name))
+@[for (a1,a2,alloc_type,alloc_name) in [['','','',''],['','', 'const ContainerAllocator& ','_alloc'],['const '+spec.short_name+'_& ','o, ', 'const ContainerAllocator& ','_alloc']]]@
+  @(spec.short_name)_(@(a1+a2+alloc_type+alloc_name))
 @# Write initializer list
-  @('\n  '.join(gencpp.generate_initializer_list(spec, alloc_name != '' )))@
+  @('\n  '.join(gencpp.generate_initializer_list(spec, alloc_name != '', a1 != '' )))@
   {
 @# Fixed length arrays
-  @('\n  '.join(gencpp.generate_fixed_length_assigns(spec, alloc_name != '', '%s::'%(spec.package))))@
+  @('\n  '.join(gencpp.generate_fixed_length_assigns(spec, alloc_name != '', '%s::'%(spec.package), a1 != '' )))@
   }
 @[end for]
 
@@ -127,10 +136,13 @@ struct @(spec.short_name)_
   typedef boost::shared_ptr< @(cpp_full_name)<ContainerAllocator> const> ConstPtr;
   boost::shared_ptr<std::map<std::string, std::string> > __connection_header;
 
+  // TODO: this creates an memory-leak, but should avoid illegal free's
+  //void operator delete(void* ptr) {};
+
 }; // struct @(cpp_class)
 
-@# Typedef of template instance using std::allocator
-typedef @(cpp_full_name)<std::allocator<void> > @(spec.short_name);
+@# Typedef of template instance using our custom allocator
+typedef @(cpp_full_name)<boost::interprocess::ros_allocator< void, boost::interprocess::managed_external_buffer::segment_manager> > @(spec.short_name);
 
 @# Shared pointer typedefs
 typedef boost::shared_ptr< @(cpp_namespace+spec.short_name) > @(spec.short_name)Ptr;
@@ -172,6 +184,7 @@ namespace message_traits
 
 @{
 bool_traits = dict(IsMessage=True,
+                   IsShmemReady=True,
                    IsFixedSize=gencpp.is_fixed_length(spec, msg_context, search_path),
                    HasHeader=spec.has_header(),
                    )
