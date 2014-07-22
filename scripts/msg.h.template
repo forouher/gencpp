@@ -75,6 +75,11 @@ cpp_msg_definition = gencpp.escape_message_definition(msg_definition)
 #include <ros/message_operations.h>
 #include <ros/allocator.h>
 #include <boost/container/scoped_allocator.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/smart_ptr/deleter.hpp>
+#include <boost/interprocess/smart_ptr/shared_ptr.hpp>
+
 
 @##############################
 @# Includes for dependencies
@@ -92,6 +97,8 @@ for field in spec.parsed_fields():
 
 namespace ros {
 class MemfdMessage;
+typedef boost::interprocess::managed_shared_memory::segment_manager segment_manager_type;
+typedef boost::interprocess::ros_allocator< void, ros::segment_manager_type> void_allocator_type;
 }
 
 namespace @(spec.package)
@@ -134,8 +141,16 @@ struct @(spec.short_name)_
 @[end for]
 
 @# Shared pointer typedefs
+
+  typedef boost::interprocess::deleter< @(cpp_full_name)<ContainerAllocator>, ros::segment_manager_type>  deleter_type;
+  typedef boost::interprocess::deleter< void, ros::segment_manager_type>  void_deleter_type;
+  typedef boost::interprocess::shared_ptr< @(cpp_full_name)<ContainerAllocator>, ros::void_allocator_type, deleter_type > IPtr;
+  typedef boost::interprocess::shared_ptr< void, ros::void_allocator_type, void_deleter_type > VoidIPtr;
+
   typedef boost::shared_ptr< @(cpp_full_name)<ContainerAllocator> > Ptr;
   typedef boost::shared_ptr< @(cpp_full_name)<ContainerAllocator> const> ConstPtr;
+
+  boost::uuids::uuid uuid;
 
   // TODO: this creates an memory-leak, but should avoid illegal free's
   //void operator delete(void* ptr) {};
@@ -143,7 +158,8 @@ struct @(spec.short_name)_
 }; // struct @(cpp_class)
 
 @# Typedef of template instance using our custom allocator
-typedef @(cpp_full_name)<boost::interprocess::ros_allocator< void, boost::interprocess::managed_external_buffer::segment_manager> > @(spec.short_name);
+@#typedef @(cpp_full_name)<boost::interprocess::ros_allocator< void, boost::interprocess::managed_external_buffer::segment_manager> > @(spec.short_name);
+typedef @(cpp_full_name)<ros::void_allocator_type> @(spec.short_name);
 
 @# Shared pointer typedefs
 typedef boost::shared_ptr< @(cpp_namespace+spec.short_name) > @(spec.short_name)Ptr;
