@@ -76,6 +76,7 @@ cpp_msg_definition = gencpp.escape_message_definition(msg_definition)
 #include <ros/allocator.h>
 #include <boost/container/scoped_allocator.hpp>
 #include <boost/uuid/uuid.hpp>
+#include <boost/uuid/nil_generator.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/smart_ptr/deleter.hpp>
 #include <boost/interprocess/smart_ptr/shared_ptr.hpp>
@@ -117,6 +118,8 @@ struct @(spec.short_name)_
   @(spec.short_name)_(@(a1+a2+alloc_type+alloc_name))
 @# Write initializer list
   @('\n  '.join(gencpp.generate_initializer_list(spec, alloc_name != '', a1 != '' )))@
+
+    , uuid(boost::uuids::nil_uuid())
   {
 @# Fixed length arrays
   @('\n  '.join(gencpp.generate_fixed_length_assigns(spec, alloc_name != '', '%s::'%(spec.package), a1 != '' )))@
