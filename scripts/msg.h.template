@@ -119,10 +119,10 @@ struct @(spec.short_name)_
 @# Write initializer list
   @('\n  '.join(gencpp.generate_initializer_list(spec, alloc_name != '', a1 != '' )))@
 
-    , uuid(boost::uuids::nil_uuid())
   {
 @# Fixed length arrays
   @('\n  '.join(gencpp.generate_fixed_length_assigns(spec, alloc_name != '', '%s::'%(spec.package), a1 != '' )))@
+    uuid = boost::uuids::nil_uuid();
   }
 @[end for]
 
