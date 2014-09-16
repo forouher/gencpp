@@ -80,7 +80,7 @@ cpp_msg_definition = gencpp.escape_message_definition(msg_definition)
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/smart_ptr/deleter.hpp>
 #include <boost/interprocess/smart_ptr/shared_ptr.hpp>
-
+#include <boost/interprocess/managed_external_buffer.hpp>
 
 @##############################
 @# Includes for dependencies
@@ -98,7 +98,7 @@ for field in spec.parsed_fields():
 
 namespace ros {
 class MemfdMessage;
-typedef boost::interprocess::managed_shared_memory::segment_manager segment_manager_type;
+typedef boost::interprocess::managed_external_buffer::segment_manager segment_manager_type;
 typedef boost::interprocess::ros_allocator< void, ros::segment_manager_type> void_allocator_type;
 }
 
